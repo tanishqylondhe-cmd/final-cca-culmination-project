@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Link | ESP32 Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-deep: #050208;
+            --accent-purple: #a855f7;
+            --accent-purple-dim: rgba(168, 85, 247, 0.15);
+            --accent-purple-glow: rgba(168, 85, 247, 0.4);
+            --text-dim: #94a3b8;
+            --text-bright: #f8fafc;
+            --glass: rgba(10, 8, 15, 0.75);
+            --glass-border: rgba(168, 85, 247, 0.25);
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: crosshair;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-dim);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- BACKGROUND LAYERS --- */
+        #three-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1; 
+            pointer-events: none;
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            opacity: 0.15;
+            filter: blur(1px);
+        }
+
+        .nebula-glow {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+                    rgba(168, 85, 247, 0.18) 0%, 
+                    transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 10% 90%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+            z-index: -2;
+            pointer-events: none;
+            transition: background 0.3s ease-out;
+        }
+
+        .grid-layer {
+            position: fixed;
+            inset: -200px;
+            background-image: 
+                linear-gradient(var(--glass-border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 85%);
+            transform: perspective(1000px) rotateX(60deg) translateY(0);
+            opacity: 0.2;
+            z-index: -1;
+            transition: transform 0.2s ease-out;
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.15) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.3;
+            animation: scanline-flicker 0.1s infinite;
+        }
+
+        @keyframes scanline-flicker {
+            0% { opacity: 0.25; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0.25; }
+        }
+
+        /* --- START SCREEN --- */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: radial-gradient(circle at center, rgba(16, 8, 24, 0.98) 0%, #050208 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1.2s var(--ease), visibility 1.2s;
+            text-align: center;
+        }
+
+        .hero-title-container {
+            position: relative;
+            margin-bottom: 4rem;
+        }
+
+        .hero-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(3rem, 10vw, 6rem);
+            color: #fff;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-weight: 900;
+            line-height: 1.1;
+            text-shadow: 0 0 40px var(--accent-purple-glow);
+            animation: title-float 6s ease-in-out infinite;
+        }
+
+        @keyframes title-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .sync-btn {
+            background: rgba(168, 85, 247, 0.05);
+            border: 1px solid var(--accent-purple);
+            color: var(--text-bright);
+            padding: 18px 50px;
+            font-family: 'JetBrains Mono';
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            cursor: pointer;
+            transition: all 0.4s var(--ease);
+            border-radius: 4px;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+            font-size: 0.85rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sync-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .sync-btn:hover::before { left: 100%; }
+
+        .sync-btn:hover {
+            background: var(--accent-purple);
+            color: #000;
+            letter-spacing: 10px;
+            box-shadow: 0 0 50px var(--accent-purple);
+            transform: translateY(-5px);
+        }
+
+        body.active #start-screen { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* --- MAIN INTERFACE --- */
+        .app-shell {
+            width: 94vw;
+            max-width: 1400px;
+            height: 90vh;
+            background: var(--glass);
+            backdrop-filter: blur(50px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            overflow: hidden;
+            opacity: 0;
+            transform: scale(0.95) translateY(40px);
+            transition: 1.2s var(--ease);
+            z-index: 10;
+            box-shadow: 0 80px 160px -40px rgba(0, 0, 0, 1);
+        }
+
+        body.active .app-shell { opacity: 1; transform: scale(1) translateY(0); }
+
+        .sidebar {
+            width: 300px;
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .sidebar-header {
+            padding: 35px 25px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .node-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.7rem;
+            color: var(--accent-purple);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .pulse {
+            width: 8px; height: 8px;
+            background: var(--accent-purple);
+            border-radius: 50%;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.6); }
+            70% { box-shadow: 0 0 0 12px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+
+        .sidebar-body {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .trace-box {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--glass-border);
+            padding: 15px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.75rem;
+            color: #d8b4fe;
+            overflow-y: auto;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+
+        .system-time {
+            padding: 20px;
+            background: rgba(168, 85, 247, 0.05);
+            text-align: center;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        #clock { font-size: 2.2rem; color: #fff; font-weight: 700; font-family: 'JetBrains Mono'; letter-spacing: -1px; }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .chat-header h2 { font-family: 'Outfit'; font-size: 1rem; color: #fff; letter-spacing: 4px; text-transform: uppercase; font-weight: 700; }
+
+        #messages {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-purple) transparent;
+        }
+
+        .msg {
+            max-width: 75%;
+            padding: 18px 22px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            position: relative;
+            animation: msgEnter 0.5s var(--ease) forwards;
+        }
+
+        @keyframes msgEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .msg-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-purple-dim), rgba(0,0,0,0.5));
+            border: 1px solid var(--glass-border);
+            color: #fff;
+        }
+
+        .msg-ai {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #cbd5e1;
+        }
+
+        .input-container {
+            padding: 30px 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .input-box {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--glass-border);
+            padding: 18px 28px;
+            display: flex;
+            gap: 15px;
+            border-radius: 6px;
+            transition: 0.4s;
+        }
+
+        .input-box:focus-within { border-color: var(--accent-purple); box-shadow: 0 0 30px rgba(168, 85, 247, 0.3); }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'JetBrains Mono';
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .send-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-purple);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .send-btn:hover { transform: scale(1.15); color: #fff; text-shadow: 0 0 10px var(--accent-purple); }
+
+        .loading-bar {
+            height: 3px;
+            width: 0%;
+            background: var(--accent-purple);
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: width 0.4s;
+            box-shadow: 0 0 20px var(--accent-purple);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+    <div class="grid-layer" id="grid"></div>
+    <div class="nebula-glow" id="nebula"></div>
+    <canvas id="matrix-canvas"></canvas>
+    <canvas id="three-canvas"></canvas>
+
+    <div id="start-screen">
+        <div class="hero-title-container">
+            <h1 class="hero-title">NEURAL<br>LINK</h1>
+            <div style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--accent-purple); letter-spacing: 14px; margin-top: 15px; opacity: 0.8;">ENCRYPTED_INTERFACE</div>
+        </div>
+        <button class="sync-btn" onclick="activate()">INITIALIZE CONNECTION</button>
+    </div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="node-status">
+                    <div class="pulse"></div>
+                    LINK_ID: ESP32_PRO_STABLE
+                </div>
+            </div>
+            <div class="sidebar-body">
+                <div id="trace-log" class="trace-box">
+                    [SYSTEM] Terminal online...<br>
+                    [MEMORY] 520KB Heap mapped<br>
+                    [UPLINK] Handshake pending...
+                </div>
+                <div class="system-time">
+                    <div id="clock">00:00:00</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div id="loading" class="loading-bar"></div>
+            <header class="chat-header">
+                <h2>NEURAL STREAM</h2>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--accent-purple); opacity: 0.9;">NODE: 192.168.1.3</span>
+            </header>
+
+            <div id="messages">
+                <div class="msg msg-ai">Interface initialized. Ready for neural uplink or hardware telemetry commands.</div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" class="input-box">
+                    <input type="text" id="user-input" placeholder="Transmit command sequence..." autocomplete="off">
+                    <button type="submit" class="send-btn">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = "http://192.168.1.5/ask";
+        const TIMEOUT_MS = 15000; // 15s timeout
+
+        function activate() {
+            document.body.classList.add('active');
+            log("[SYSTEM] Establishing encrypted tunnel...");
+            setTimeout(() => {
+                document.getElementById('user-input').focus();
+                log("[SYSTEM] Neural Link Operational.");
+            }, 1200);
+        }
+
+        // BACKGROUND ANIMATIONS
+        const nebula = document.getElementById('nebula');
+        const grid = document.getElementById('grid');
+        window.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            nebula.style.setProperty('--mouse-x', `${x}%`);
+            nebula.style.setProperty('--mouse-y', `${y}%`);
+            const px = (e.clientX - window.innerWidth / 2) * 0.03;
+            const py = (e.clientY - window.innerHeight / 2) * 0.03;
+            grid.style.transform = `perspective(1000px) rotateX(60deg) translate(${px}px, ${py}px)`;
+        });
+
+        // Matrix Rain
+        const mCanvas = document.getElementById('matrix-canvas');
+        const mCtx = mCanvas.getContext('2d');
+        let mColumns = 0, mDrops = [];
+        function initMatrix() {
+            mCanvas.width = window.innerWidth;
+            mCanvas.height = window.innerHeight;
+            mColumns = Math.floor(mCanvas.width / 20);
+            mDrops = Array(mColumns).fill(1);
+        }
+        function drawMatrix() {
+            mCtx.fillStyle = 'rgba(5, 2, 8, 0.15)';
+            mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+            mCtx.fillStyle = 'rgba(168, 85, 247, 0.2)';
+            mCtx.font = '13px monospace';
+            for (let i = 0; i < mDrops.length; i++) {
+                const text = Math.random() > 0.5 ? "0" : "1";
+                mCtx.fillText(text, i * 20, mDrops[i] * 20);
+                if (mDrops[i] * 20 > mCanvas.height && Math.random() > 0.985) mDrops[i] = 0;
+                mDrops[i]++;
+            }
+            requestAnimationFrame(drawMatrix);
+        }
+
+        // Three JS Core
+        let scene, camera, renderer, coreGroup, waves = [];
+        function initThree() {
+            const canvas = document.getElementById('three-canvas');
+            scene = new THREE.Scene();
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 15;
+            coreGroup = new THREE.Group();
+            scene.add(coreGroup);
+            const wireMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, wireframe: true, transparent: true, opacity: 0.2 });
+            coreGroup.add(new THREE.Mesh(new THREE.IcosahedronGeometry(2, 1), wireMat));
+            for(let i = 0; i < 5; i++) {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.02, 10, 60), new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0 }));
+                ring.rotation.x = Math.PI / 2;
+                ring.userData = { radius: 1, speed: 0.06, delay: i * 60 };
+                scene.add(ring);
+                waves.push(ring);
+            }
+        }
+        function animateThree() {
+            requestAnimationFrame(animateThree);
+            coreGroup.rotation.y += 0.005;
+            waves.forEach(ring => {
+                if (ring.userData.delay > 0) ring.userData.delay--;
+                else {
+                    ring.userData.radius += ring.userData.speed;
+                    ring.scale.set(ring.userData.radius, ring.userData.radius, 1);
+                    ring.material.opacity = Math.max(0, 0.4 * (1 - ring.userData.radius / 15));
+                    if (ring.userData.radius > 15) { ring.userData.radius = 1; ring.userData.delay = 40; }
+                }
+            });
+            renderer.render(scene, camera);
+        }
+
+        function log(msg) {
+            const box = document.getElementById('trace-log');
+            const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            box.innerHTML += `<div><span style="opacity:0.4;">[${time}]</span> ${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            requestAnimationFrame(updateClock);
+        }
+
+        // FIXED CHAT HANDLER
+        async function handleChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            appendMsg(text, 'user');
+            log(`TX_SEQ >> ${text.substring(0, 15)}...`);
+
+            const loader = document.getElementById('loading');
+            loader.style.width = '30%';
+            input.disabled = true;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                loader.style.width = '75%';
+
+                if (!response.ok) throw new Error(`HTTP_${response.status}`);
+                
+                const contentType = response.headers.get("content-type");
+                let aiResponse = "";
+
+                // Check if response is actually JSON
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const data = await response.json();
+                    // Fallback keys if ESP32 uses "reply" or "response"
+                    aiResponse = data.response || data.reply || data.message || JSON.stringify(data);
+                } else {
+                    // Fallback for plain text responses
+                    aiResponse = await response.text();
+                }
+
+                if (!aiResponse || aiResponse === "{}") aiResponse = "[EMPTY_NODE_RESPONSE]";
+
+                loader.style.width = '100%';
+                setTimeout(() => {
+                    appendMsg(aiResponse, 'ai');
+                    log(`RX_SYNC << SUCCESS`);
+                    loader.style.width = '0%';
+                }, 300);
+
+            } catch (err) {
+                let errorMsg = err.name === 'AbortError' ? "NODE_TIMEOUT" : `FETCH_ERROR: ${err.message}`;
+                log(`LINK_ERR !! ${errorMsg}`);
+                appendMsg(`SYSTEM_FAILURE: ${errorMsg}. Verify ESP32 IP and CORS headers.`, 'ai');
+                loader.style.width = '0%';
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        function appendMsg(txt, type) {
+            const div = document.createElement('div');
+            div.className = `msg msg-${type}`;
+            div.textContent = txt;
+            const container = document.getElementById('messages');
+            container.appendChild(div);
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        window.onload = () => { 
+            initMatrix(); drawMatrix(); updateClock(); initThree(); animateThree();
+        };
+
+        window.onresize = () => {
+            initMatrix();
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
+
+        document.getElementById('chat-form').addEventListener('submit', handleChat);
+    </script>
+</body>
+</html>
