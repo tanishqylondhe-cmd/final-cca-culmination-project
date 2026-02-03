@@ -6,21 +6,25 @@
     <title>Neural Link | Arctic Terminal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-deep: #010409;
-            --accent-blue: #3b82f6;
-            --accent-green: #10b981;
-            --accent-green-bright: #34d399;
-            --accent-glow: rgba(16, 185, 129, 0.6);
-            --text-dim: #cbd5e1;
+            --bg-deep: #05030a;
+            --bg-void: #02010a;
+            --accent-purple: #8b5cf6;
+            --accent-purple-bright: #a855f7;
+            --accent-emerald: #10f3c7;
+            --accent-blue: #38bdf8;
+            --accent-glow: rgba(168, 85, 247, 0.55);
+            --accent-glow-emerald: rgba(16, 243, 199, 0.35);
+            --text-dim: #cbd5f5;
             --text-bright: #ffffff;
-            --glass: rgba(5, 10, 20, 0.95);
-            --glass-border: rgba(16, 185, 129, 0.5);
+            --glass: rgba(8, 5, 20, 0.82);
+            --glass-border: rgba(168, 85, 247, 0.45);
             --ease: cubic-bezier(0.16, 1, 0.3, 1);
+            --grid-tilt: 63deg;
+            --parallax-x: 0deg;
+            --parallax-y: 0deg;
         }
 
         * {
@@ -43,61 +47,80 @@
         }
 
         /* --- BACKGROUND LAYERS --- */
-        #three-canvas {
-            position: fixed;
-            inset: 0;
-            z-index: 1; 
-            pointer-events: none;
-            opacity: 0.4;
-        }
-
-        /* The Lively-style Code Rain Canvas */
         #code-rain-canvas {
             position: fixed;
             inset: 0;
-            z-index: -3;
+            z-index: -4;
             background: #000;
         }
 
-        .nebula-glow {
+        .noise-layer {
             position: fixed;
             inset: 0;
-            background: 
-                radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
-                    rgba(16, 185, 129, 0.15) 0%, 
-                    transparent 50%);
-            z-index: -2;
-            pointer-events: none;
-        }
-
-        .grid-layer {
-            position: fixed;
-            inset: -200px;
-            background-image: 
-                linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
-            background-size: 60px 60px;
-            mask-image: radial-gradient(circle at 50% 50%, black, transparent 85%);
-            transform: perspective(1000px) rotateX(60deg);
-            opacity: 0.2;
             z-index: -1;
+            opacity: 0.16;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+            mix-blend-mode: screen;
         }
 
         .scanlines {
             position: fixed;
             inset: 0;
-            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 50%);
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.45) 50%);
             background-size: 100% 4px;
-            z-index: 100;
+            z-index: 30;
             pointer-events: none;
-            opacity: 0.5;
+            opacity: 0.45;
+        }
+
+        .crt-distortion {
+            position: fixed;
+            inset: 0;
+            z-index: 25;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.12), transparent 65%);
+            mix-blend-mode: screen;
+            animation: crt-flicker 6s infinite;
+        }
+
+        @keyframes crt-flicker {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+            70% { opacity: 0.5; }
+        }
+
+        .grid-layer {
+            position: fixed;
+            inset: -200px;
+            background-image:
+                linear-gradient(rgba(168, 85, 247, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(168, 85, 247, 0.15) 1px, transparent 1px);
+            background-size: 70px 70px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 85%);
+            transform: perspective(1000px) rotateX(var(--grid-tilt)) translate3d(0, 0, 0);
+            opacity: 0.22;
+            z-index: -2;
+            transition: transform 0.2s linear;
+        }
+
+        .nebula-glow {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+                    rgba(168, 85, 247, 0.22) 0%,
+                    transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(16, 243, 199, 0.18), transparent 50%);
+            z-index: -3;
+            pointer-events: none;
         }
 
         /* --- START SCREEN --- */
         #start-screen {
             position: fixed;
             inset: 0;
-            z-index: 1000;
+            z-index: 40;
             background: transparent;
             display: flex;
             flex-direction: column;
@@ -111,7 +134,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.72);
             z-index: -1;
         }
 
@@ -129,15 +152,23 @@
         .ollama-logo-img {
             width: 120px;
             height: 120px;
-            object-fit: contain;
-            filter: drop-shadow(0 0 20px var(--accent-green));
-            z-index: 2;
+            display: grid;
+            place-items: center;
+            border-radius: 28px;
+            border: 2px solid rgba(168, 85, 247, 0.7);
+            background: radial-gradient(circle at top, rgba(168, 85, 247, 0.4), rgba(8, 5, 20, 0.9));
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.6);
         }
 
         .logo-glow-ring {
             position: absolute;
             inset: 0;
-            border: 3px solid var(--accent-green);
+            border: 3px solid var(--accent-purple);
             border-radius: 40px;
             opacity: 0.4;
             box-shadow: 0 0 50px var(--accent-glow);
@@ -163,11 +194,10 @@
             font-weight: 900;
             margin-bottom: 2rem;
             text-shadow: 0 0 30px var(--accent-glow);
-            /* Flickering Animation */
             animation: text-flicker 4s linear infinite;
         }
 
-        .hero-title span { color: var(--accent-green); }
+        .hero-title span { color: var(--accent-purple-bright); }
 
         @keyframes text-flicker {
             0% { opacity: 1; text-shadow: 0 0 30px var(--accent-glow); }
@@ -183,8 +213,8 @@
         }
 
         .sync-btn {
-            background: rgba(16, 185, 129, 0.1);
-            border: 2px solid var(--accent-green);
+            background: rgba(168, 85, 247, 0.08);
+            border: 2px solid var(--accent-purple);
             color: #fff;
             padding: 22px 65px;
             font-family: 'JetBrains Mono';
@@ -195,11 +225,11 @@
             transition: all 0.4s var(--ease);
             border-radius: 8px;
             backdrop-filter: blur(10px);
-            z-index: 1001;
+            z-index: 41;
         }
 
         .sync-btn:hover {
-            background: var(--accent-green);
+            background: var(--accent-purple-bright);
             color: #000;
             box-shadow: 0 0 60px var(--accent-glow);
             transform: translateY(-5px);
@@ -210,33 +240,41 @@
         /* --- MAIN INTERFACE --- */
         .app-shell {
             width: 94vw;
-            max-width: 1400px;
+            max-width: 1500px;
             height: 90vh;
             background: var(--glass);
-            backdrop-filter: blur(40px);
+            backdrop-filter: blur(45px);
             border: 2px solid var(--glass-border);
             border-radius: 20px;
             display: flex;
             overflow: hidden;
             opacity: 0;
-            transform: scale(0.96);
+            transform: scale(0.96) translate3d(0, 0, 0);
             transition: 0.8s var(--ease);
             z-index: 10;
-            box-shadow: 0 0 100px rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 140px rgba(0, 0, 0, 0.9);
         }
 
-        body.active .app-shell { opacity: 1; transform: scale(1); }
+        body.active .app-shell { opacity: 1; transform: scale(1) translate3d(0, 0, 0); }
+
+        .app-shell::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 1px solid rgba(16, 243, 199, 0.15);
+            pointer-events: none;
+        }
 
         .sidebar {
-            width: 320px;
+            width: 330px;
             border-right: 2px solid var(--glass-border);
             display: flex;
             flex-direction: column;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.88);
         }
 
         .sidebar-header {
-            padding: 35px 25px;
+            padding: 30px 25px;
             border-bottom: 1px solid var(--glass-border);
         }
 
@@ -246,7 +284,7 @@
             gap: 12px;
             font-family: 'JetBrains Mono';
             font-size: 0.75rem;
-            color: var(--accent-green-bright);
+            color: var(--accent-emerald);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -254,38 +292,127 @@
 
         .pulse {
             width: 12px; height: 12px;
-            background: var(--accent-green-bright);
+            background: var(--accent-emerald);
             border-radius: 50%;
-            box-shadow: 0 0 15px var(--accent-green);
+            box-shadow: 0 0 15px var(--accent-emerald);
             animation: dot-pulse 2s infinite;
         }
 
         @keyframes dot-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(16, 243, 199, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(16, 243, 199, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 243, 199, 0); }
+        }
+
+        .sidebar-section {
+            padding: 18px 22px;
+            border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .sidebar-section h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: var(--accent-purple-bright);
+            margin-bottom: 12px;
+        }
+
+        .status-grid {
+            display: grid;
+            gap: 12px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            color: var(--accent-emerald);
+            background: rgba(16, 243, 199, 0.08);
         }
 
         .trace-box {
             flex: 1;
-            background: rgba(0, 0, 0, 0.7);
-            margin: 20px;
+            background: rgba(0, 0, 0, 0.72);
+            margin: 18px 20px;
             padding: 20px;
             font-family: 'JetBrains Mono';
             font-size: 0.8rem;
-            color: var(--accent-green-bright);
+            color: var(--accent-emerald);
             overflow-y: auto;
             border-radius: 8px;
             border: 1px solid var(--glass-border);
             line-height: 1.6;
         }
 
-        #clock { 
-            font-size: 2.5rem; 
-            color: #fff; 
-            font-weight: 700; 
-            font-family: 'JetBrains Mono'; 
-            text-shadow: 0 0 20px rgba(16, 185, 129, 0.4); 
+        .core-assembly {
+            padding: 20px 22px 28px;
+            border-top: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .neural-core {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto;
+        }
+
+        .core-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
+            animation: core-spin 12s linear infinite;
+        }
+
+        .core-ring:nth-child(2) {
+            inset: 12px;
+            border-color: rgba(16, 243, 199, 0.6);
+            animation-direction: reverse;
+            animation-duration: 8s;
+        }
+
+        .core-ring:nth-child(3) {
+            inset: 24px;
+            border-color: rgba(56, 189, 248, 0.5);
+            animation-duration: 14s;
+        }
+
+        .core-core {
+            position: absolute;
+            inset: 45px;
+            border-radius: 12px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.8), rgba(8, 5, 20, 0.9));
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.8);
+            animation: core-pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes core-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes core-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        #clock {
+            font-size: 2.4rem;
+            color: #fff;
+            font-weight: 700;
+            font-family: 'JetBrains Mono';
+            text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
         }
 
         .content {
@@ -293,7 +420,7 @@
             display: flex;
             flex-direction: column;
             position: relative;
-            background: linear-gradient(to bottom, transparent, rgba(16, 185, 129, 0.05));
+            background: linear-gradient(to bottom, transparent, rgba(168, 85, 247, 0.06));
         }
 
         .chat-header {
@@ -302,54 +429,107 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid var(--glass-border);
-            background: rgba(16, 185, 129, 0.05);
+            background: rgba(168, 85, 247, 0.07);
         }
 
-        .chat-header h2 { 
-            font-family: 'Outfit'; 
-            font-size: 1.1rem; 
-            color: var(--accent-green-bright); 
-            letter-spacing: 5px; 
+        .chat-header h2 {
+            font-family: 'Outfit';
+            font-size: 1.1rem;
+            color: var(--accent-purple-bright);
+            letter-spacing: 5px;
             text-transform: uppercase;
             font-weight: 700;
+            position: relative;
+        }
+
+        .chat-header h2::after {
+            content: attr(data-glitch);
+            position: absolute;
+            left: 2px;
+            top: 0;
+            color: rgba(16, 243, 199, 0.8);
+            z-index: -1;
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0% { opacity: 0.4; transform: translateX(0); }
+            20% { opacity: 0.8; transform: translateX(2px); }
+            40% { opacity: 0.3; transform: translateX(-2px); }
+            60% { opacity: 0.7; transform: translateX(1px); }
+            100% { opacity: 0.4; transform: translateX(0); }
+        }
+
+        .connection-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent-emerald);
+        }
+
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-emerald);
+            box-shadow: 0 0 10px var(--accent-emerald);
         }
 
         #messages {
             flex: 1;
-            padding: 40px;
+            padding: 34px 40px 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 25px;
+            gap: 22px;
         }
 
         .msg {
             max-width: 80%;
-            padding: 20px 28px;
+            padding: 18px 24px;
             border-radius: 15px;
-            font-size: 1rem;
+            font-size: 0.98rem;
             line-height: 1.7;
             position: relative;
             color: #fff;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: msg-in 0.4s var(--ease);
+        }
+
+        @keyframes msg-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .msg-user {
             align-self: flex-end;
-            background: linear-gradient(135deg, #10b981, #059669);
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
             border-bottom-right-radius: 2px;
             font-weight: 500;
         }
 
         .msg-ai {
             align-self: flex-start;
-            background: rgba(30, 41, 59, 0.9);
+            background: rgba(15, 23, 42, 0.9);
             border: 1px solid var(--glass-border);
             border-bottom-left-radius: 2px;
         }
 
+        .msg-system {
+            align-self: center;
+            background: rgba(16, 243, 199, 0.08);
+            border: 1px solid rgba(16, 243, 199, 0.4);
+            color: var(--accent-emerald);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
         .input-container {
-            padding: 35px 45px;
+            padding: 28px 45px 34px;
             background: rgba(0, 0, 0, 0.9);
             border-top: 2px solid var(--glass-border);
         }
@@ -357,16 +537,16 @@
         .input-box {
             background: #000;
             border: 2px solid var(--glass-border);
-            padding: 20px 30px;
+            padding: 18px 26px;
             display: flex;
             gap: 20px;
             border-radius: 12px;
             transition: all 0.3s;
         }
 
-        .input-box:focus-within { 
-            border-color: var(--accent-green-bright);
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        .input-box:focus-within {
+            border-color: var(--accent-emerald);
+            box-shadow: 0 0 30px rgba(16, 243, 199, 0.3);
             transform: translateY(-2px);
         }
 
@@ -382,10 +562,15 @@
 
         input::placeholder { color: rgba(255, 255, 255, 0.3); }
 
+        input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .send-btn {
             background: transparent;
             border: none;
-            color: var(--accent-green-bright);
+            color: var(--accent-emerald);
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -395,30 +580,86 @@
         .send-btn:hover { transform: scale(1.2); color: #fff; }
 
         .loading-bar {
-            height: 5px;
+            height: 4px;
             width: 0%;
-            background: var(--accent-green-bright);
+            background: linear-gradient(90deg, var(--accent-purple-bright), var(--accent-emerald));
             position: absolute;
             top: 0;
             left: 0;
             transition: width 0.4s;
-            box-shadow: 0 0 25px var(--accent-green);
-            z-index: 50;
+            box-shadow: 0 0 25px var(--accent-glow);
+            z-index: 5;
+        }
+
+        .system-panel {
+            padding: 18px 22px 26px;
+            border-top: 1px solid rgba(168, 85, 247, 0.2);
+            font-family: 'JetBrains Mono';
+            font-size: 0.75rem;
+            line-height: 1.6;
+            color: var(--text-dim);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .system-panel strong {
+            color: var(--accent-emerald);
+            font-weight: 600;
+        }
+
+        .system-panel ul {
+            margin: 8px 0 0 18px;
+        }
+
+        .system-panel li {
+            margin-bottom: 6px;
+        }
+
+        .processing-indicator {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            font-family: 'JetBrains Mono';
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent-emerald);
+        }
+
+        .processing-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-emerald);
+            animation: pulse 1.4s infinite;
+        }
+
+        .processing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .processing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-3px); }
+        }
+
+        @media (max-width: 1100px) {
+            .app-shell { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 2px solid var(--glass-border); }
         }
     </style>
 </head>
 <body>
-
     <div class="scanlines"></div>
+    <div class="crt-distortion"></div>
     <div class="grid-layer" id="grid"></div>
     <div class="nebula-glow" id="nebula"></div>
+    <div class="noise-layer"></div>
     <canvas id="code-rain-canvas"></canvas>
-    <canvas id="three-canvas"></canvas>
 
     <div id="start-screen">
         <div class="logo-container">
             <div class="logo-glow-ring"></div>
-            <img src="https://ollama.com/public/ollama.png" alt="Ollama Logo" class="ollama-logo-img" onerror="this.src='https://raw.githubusercontent.com/ollama/ollama/main/docs/assets/logo.png'">
+            <div class="ollama-logo-img">OLLAMA</div>
         </div>
         <h1 class="hero-title">OLLAMA<span>LINK</span></h1>
         <button class="sync-btn" onclick="activate()">BOOT_SEQUENCE</button>
@@ -432,30 +673,77 @@
                     NODE_ACTIVE: 192.168.1.3
                 </div>
             </div>
-            <div class="sidebar-body" style="flex:1; display:flex; flex-direction:column;">
-                <div id="trace-log" class="trace-box">
-                    [SYSTEM] Ollama Protocol v4.5<br>
-                    [INFO] Local Model: Llama-3-8B<br>
-                    [INFO] Wallpaper: Lively-Mode On<br>
-                    [INFO] Rendering: Code-Rain Stream<br>
-                    [INFO] Status: Ready...
+            <div class="sidebar-section">
+                <h3>Neural Trace Log</h3>
+                <div class="status-grid">
+                    <div class="status-row"><span>CONNECTION_STATUS</span><span class="status-pill" id="connection-status">IDLE</span></div>
+                    <div class="status-row"><span>ESP32_GATEWAY</span><span class="status-pill" id="gateway-status">STANDBY</span></div>
+                    <div class="status-row"><span>OLLAMA_STATE</span><span class="status-pill" id="ollama-status">OFFLINE</span></div>
+                    <div class="status-row"><span>REQUEST_QUEUE</span><span class="status-pill" id="queue-status">0</span></div>
                 </div>
-                <div style="padding: 25px; text-align: center; border-top: 1px solid var(--glass-border);">
-                    <div id="clock">00:00:00</div>
+            </div>
+            <div id="trace-log" class="trace-box">
+                [SYSTEM] Ollama Protocol v4.5<br>
+                [INFO] Local Model: Llama-3-8B<br>
+                [INFO] Wallpaper: Lively-Mode On<br>
+                [INFO] Rendering: Code-Rain Stream<br>
+                [INFO] Status: Ready...
+            </div>
+            <div class="core-assembly">
+                <div class="neural-core" aria-hidden="true">
+                    <div class="core-ring"></div>
+                    <div class="core-ring"></div>
+                    <div class="core-ring"></div>
+                    <div class="core-core"></div>
                 </div>
+            </div>
+            <div class="system-panel" id="architecture-panel">
+                <div><strong>CORE SYSTEM OVERVIEW</strong></div>
+                <div>The system consists of:</div>
+                <div>• An ESP32 microcontroller acting as:</div>
+                <ul>
+                    <li>- A lightweight HTTP server</li>
+                    <li>- A message relay</li>
+                    <li>- A system state controller</li>
+                    <li>- A hardware-level network bridge</li>
+                </ul>
+                <div>• A local PC running Ollama:</div>
+                <ul>
+                    <li>- Offline LLM hosting</li>
+                    <li>- Model: llama3:latest</li>
+                    <li>- CPU-based inference</li>
+                    <li>- Accessed strictly via LAN</li>
+                    <li>- No streaming</li>
+                    <li>- High latency expected and accepted</li>
+                </ul>
+                <div>• A web-based frontend:</div>
+                <ul>
+                    <li>- Pure HTML, CSS, JavaScript</li>
+                    <li>- Communicates ONLY with ESP32</li>
+                    <li>- Hacker-style terminal interface</li>
+                    <li>- Heavy animations and transitions</li>
+                    <li>- Zero modification to informational text</li>
+                </ul>
+            </div>
+            <div class="sidebar-section" style="border-top: 1px solid rgba(168, 85, 247, 0.2);">
+                <h3>Connection Status</h3>
+                <div class="status-grid">
+                    <div class="status-row"><span>LAST_EVENT</span><span class="status-pill" id="last-event">NONE</span></div>
+                    <div class="status-row"><span>LATENCY</span><span class="status-pill" id="latency">--</span></div>
+                </div>
+            </div>
+            <div style="padding: 25px; text-align: center; border-top: 1px solid var(--glass-border);">
+                <div id="clock">00:00:00</div>
             </div>
         </aside>
 
         <main class="content">
             <div id="loading" class="loading-bar"></div>
             <header class="chat-header">
-                <h2>LOCAL_NEURAL_STREAM</h2>
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <div style="width: 22px; height: 22px; color: var(--accent-green-bright);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
-                    </div>
+                <h2 data-glitch="LOCAL_NEURAL_STREAM">LOCAL_NEURAL_STREAM</h2>
+                <div class="connection-badge" id="ui-connection">
+                    <span class="connection-dot"></span>
+                    OFFLINE_GATEWAY
                 </div>
             </header>
 
@@ -466,7 +754,7 @@
             <div class="input-container">
                 <form id="chat-form" class="input-box">
                     <input type="text" id="user-input" placeholder="Enter command..." autocomplete="off">
-                    <button type="submit" class="send-btn">
+                    <button type="submit" class="send-btn" aria-label="Send command">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                         </svg>
@@ -479,6 +767,13 @@
     <script>
         const API_URL = "http://192.168.1.8/ask"; // change this to your esp 32 ip address
         const TIMEOUT_MS = 20000;
+        const RAIN_FPS = 30;
+
+        const state = {
+            queue: 0,
+            lastEvent: 'NONE',
+            isProcessing: false
+        };
 
         function activate() {
             document.body.classList.add('active');
@@ -493,6 +788,7 @@
         let cDrops = [];
         const fontSize = 16;
         const charSet = "01<>{}[]/\\|;:=+-*&%$#@!?0123456789ABCDEFλμπΩ";
+        let lastRainFrame = 0;
 
         function initCodeRain() {
             cCanvas.width = window.innerWidth;
@@ -501,18 +797,19 @@
             cDrops = Array(cColumns).fill(1).map(() => Math.random() * -100);
         }
 
-        function drawCodeRain() {
+        function drawCodeRain(timestamp) {
+            if (timestamp - lastRainFrame < 1000 / RAIN_FPS) {
+                requestAnimationFrame(drawCodeRain);
+                return;
+            }
+            lastRainFrame = timestamp;
             cCtx.fillStyle = 'rgba(0, 0, 0, 0.08)';
             cCtx.fillRect(0, 0, cCanvas.width, cCanvas.height);
             cCtx.font = `bold ${fontSize}px "JetBrains Mono"`;
 
             for (let i = 0; i < cDrops.length; i++) {
                 const char = charSet[Math.floor(Math.random() * charSet.length)];
-                if (Math.random() > 0.95) {
-                    cCtx.fillStyle = '#fff';
-                } else {
-                    cCtx.fillStyle = 'rgba(16, 185, 129, 0.5)';
-                }
+                cCtx.fillStyle = Math.random() > 0.95 ? '#ffffff' : 'rgba(168, 85, 247, 0.6)';
                 const x = i * fontSize;
                 const y = cDrops[i] * fontSize;
                 cCtx.fillText(char, x, y);
@@ -524,33 +821,18 @@
             requestAnimationFrame(drawCodeRain);
         }
 
-        // THREE.JS GHOST OVERLAY
-        let scene, camera, renderer, coreGroup;
-        function initThree() {
-            const canvas = document.getElementById('three-canvas');
-            scene = new THREE.Scene();
-            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 15;
-            coreGroup = new THREE.Group();
-            scene.add(coreGroup);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.1 });
-            coreGroup.add(new THREE.Mesh(new THREE.IcosahedronGeometry(4, 2), mat));
-        }
-        function animateThree() {
-            requestAnimationFrame(animateThree);
-            coreGroup.rotation.y += 0.0015;
-            coreGroup.rotation.x += 0.0008;
-            renderer.render(scene, camera);
-        }
-
         const nebula = document.getElementById('nebula');
+        const grid = document.getElementById('grid');
         window.addEventListener('mousemove', (e) => {
             const x = (e.clientX / window.innerWidth) * 100;
             const y = (e.clientY / window.innerHeight) * 100;
             nebula.style.setProperty('--mouse-x', `${x}%`);
             nebula.style.setProperty('--mouse-y', `${y}%`);
+            const tiltX = ((e.clientY / window.innerHeight) - 0.5) * 6;
+            const tiltY = ((e.clientX / window.innerWidth) - 0.5) * -6;
+            document.documentElement.style.setProperty('--parallax-x', `${tiltX}deg`);
+            document.documentElement.style.setProperty('--parallax-y', `${tiltY}deg`);
+            grid.style.transform = `perspective(1000px) rotateX(var(--grid-tilt)) rotateY(${tiltY}deg) translate3d(0, 0, 0)`;
         });
 
         function log(msg) {
@@ -566,48 +848,24 @@
             requestAnimationFrame(updateClock);
         }
 
-        async function handleChat(e) {
-            e.preventDefault();
-            const input = document.getElementById('user-input');
-            const text = input.value.trim();
-            if (!text) return;
-
-            input.value = '';
-            appendMsg(text, 'user');
-            
-            const loader = document.getElementById('loading');
-            loader.style.width = '30%';
-            input.disabled = true;
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: text }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-                loader.style.width = '70%';
-                const data = await response.json();
-                const aiResponse = data.response || data.reply || data.message || "[NODE_SILENT]";
-
-                loader.style.width = '100%';
-                setTimeout(() => {
-                    appendMsg(aiResponse, 'ai');
-                    loader.style.width = '0%';
-                }, 300);
-
-            } catch (err) {
-                appendMsg(`SYSTEM_FAILURE: ${err.name === 'AbortError' ? 'TIMEOUT' : err.message}`, 'ai');
-                loader.style.width = '0%';
-            } finally {
-                input.disabled = false;
-                input.focus();
+        function setStatus(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = value;
             }
+        }
+
+        function updateQueue(delta) {
+            state.queue = Math.max(0, state.queue + delta);
+            setStatus('queue-status', String(state.queue));
+        }
+
+        function setConnectionBadge(text, isOnline) {
+            const badge = document.getElementById('ui-connection');
+            badge.lastChild.textContent = text;
+            const dot = badge.querySelector('.connection-dot');
+            dot.style.background = isOnline ? 'var(--accent-emerald)' : 'var(--accent-purple-bright)';
+            dot.style.boxShadow = isOnline ? '0 0 10px var(--accent-emerald)' : '0 0 10px var(--accent-purple-bright)';
         }
 
         function appendMsg(txt, type) {
@@ -617,21 +875,181 @@
             const container = document.getElementById('messages');
             container.appendChild(div);
             container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            return div;
         }
 
-        window.onload = () => { 
-            initCodeRain(); 
-            drawCodeRain(); 
-            updateClock(); 
-            initThree(); 
-            animateThree(); 
+        async function probeESP32Reachable() {
+            const url = new URL(API_URL);
+            const base = `${url.protocol}//${url.host}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            try {
+                await fetch(base, { method: 'GET', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                return true;
+            } catch (err) {
+                return false;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        function resolveOllamaState(payload) {
+            if (!payload) return 'OFFLINE';
+            const errorText = String(payload.error || payload.message || '').toLowerCase();
+            if (errorText.includes('model') && errorText.includes('not')) {
+                return 'MODEL_NOT_LOADED';
+            }
+            if (errorText.includes('ollama') || errorText.includes('connection') || errorText.includes('refused')) {
+                return 'OFFLINE';
+            }
+            return 'ONLINE';
+        }
+
+        async function handleChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text || state.isProcessing) return;
+
+            input.value = '';
+            appendMsg(text, 'user');
+            updateQueue(1);
+            state.isProcessing = true;
+            setStatus('connection-status', 'PROCESSING');
+            setStatus('gateway-status', 'ACTIVE');
+            setStatus('last-event', 'REQUEST_SENT');
+            setConnectionBadge('ESP32_ACTIVE', true);
+
+            const loader = document.getElementById('loading');
+            loader.style.width = '35%';
+            input.disabled = true;
+
+            const processingMsg = appendMsg('PROCESSING: ESP32_RELAY → OLLAMA', 'system');
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+            let responseTime = null;
+
+            try {
+                const startTime = performance.now();
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                    signal: controller.signal
+                });
+                responseTime = Math.round(performance.now() - startTime);
+                setStatus('latency', `${responseTime}ms`);
+
+                clearTimeout(timeoutId);
+                loader.style.width = '70%';
+
+                if (!response.ok) {
+                    throw new Error(`HTTP_${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    throw new Error('INVALID_CONTENT_TYPE');
+                }
+
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (err) {
+                    throw new Error('INVALID_JSON');
+                }
+
+                const aiResponse = data?.response || data?.reply || data?.message || '';
+                const isPartial = Boolean(data?.partial || data?.done === false || data?.status === 'partial');
+                const isEmpty = String(aiResponse).trim().length === 0;
+                const hasClientError = data?.error_code === -1 || data?.error_code === -11;
+
+                if (hasClientError) {
+                    throw new Error('ESP32_CLIENT_ERROR');
+                }
+
+                if (isEmpty) {
+                    throw new Error('EMPTY_RESPONSE');
+                }
+
+                if (isPartial) {
+                    appendMsg(`PARTIAL_RESPONSE: ${aiResponse}`, 'ai');
+                    setStatus('last-event', 'PARTIAL_RESPONSE');
+                } else {
+                    appendMsg(aiResponse, 'ai');
+                    setStatus('last-event', 'RESPONSE_RECEIVED');
+                }
+
+                setStatus('ollama-status', resolveOllamaState(data));
+                setStatus('connection-status', 'STABLE');
+                setStatus('gateway-status', 'READY');
+
+                loader.style.width = '100%';
+                setTimeout(() => {
+                    loader.style.width = '0%';
+                }, 260);
+
+            } catch (err) {
+                clearTimeout(timeoutId);
+                loader.style.width = '0%';
+                const message = err?.message || 'UNKNOWN_FAILURE';
+
+                if (message === 'INVALID_CONTENT_TYPE') {
+                    appendMsg('INVALID_CONTENT_TYPE: ESP32 rejected or returned non-JSON payload.', 'ai');
+                    setStatus('last-event', 'INVALID_CONTENT_TYPE');
+                } else if (message === 'INVALID_JSON') {
+                    appendMsg('INVALID_JSON: ESP32 response could not be parsed.', 'ai');
+                    setStatus('last-event', 'INVALID_JSON');
+                } else if (message === 'EMPTY_RESPONSE') {
+                    appendMsg('EMPTY_RESPONSE: HTTP 200 with no data from ESP32 relay.', 'ai');
+                    setStatus('last-event', 'EMPTY_RESPONSE');
+                } else if (message === 'ESP32_CLIENT_ERROR') {
+                    appendMsg('ESP32_CLIENT_ERROR: -1 / -11 reported by gateway.', 'ai');
+                    setStatus('last-event', 'ESP32_CLIENT_ERROR');
+                } else if (message.startsWith('HTTP_')) {
+                    appendMsg(`HTTP_ERROR: ${message.replace('HTTP_', '')} from ESP32 endpoint.`, 'ai');
+                    setStatus('last-event', 'HTTP_ERROR');
+                } else if (err?.name === 'AbortError') {
+                    appendMsg('TIMEOUT: ESP32 relay exceeded timeout window.', 'ai');
+                    setStatus('last-event', 'TIMEOUT');
+                } else if (message === 'Failed to fetch' || message === 'NetworkError when attempting to fetch resource.') {
+                    const reachable = await probeESP32Reachable();
+                    if (reachable) {
+                        appendMsg('CORS_FAILURE: ESP32 reachable but browser blocked by CORS.', 'ai');
+                        setStatus('last-event', 'CORS_FAILURE');
+                    } else {
+                        appendMsg('ESP32_UNREACHABLE: Wrong IP, offline, or network bridge down.', 'ai');
+                        setStatus('last-event', 'ESP32_UNREACHABLE');
+                    }
+                } else {
+                    appendMsg(`SYSTEM_FAILURE: ${message}`, 'ai');
+                    setStatus('last-event', 'SYSTEM_FAILURE');
+                }
+
+                setStatus('connection-status', 'FAULT');
+                setStatus('gateway-status', 'ERROR');
+                setStatus('ollama-status', 'OFFLINE');
+                setConnectionBadge('ESP32_FAULT', false);
+            } finally {
+                input.disabled = false;
+                input.focus();
+                updateQueue(-1);
+                state.isProcessing = false;
+                if (processingMsg && processingMsg.parentNode) {
+                    processingMsg.parentNode.removeChild(processingMsg);
+                }
+            }
+        }
+
+        window.onload = () => {
+            initCodeRain();
+            drawCodeRain(0);
+            updateClock();
         };
 
         window.addEventListener('resize', () => {
             initCodeRain();
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
         document.getElementById('chat-form').addEventListener('submit', handleChat);
