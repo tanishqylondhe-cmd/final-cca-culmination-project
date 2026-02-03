@@ -1,0 +1,737 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Link | Arctic Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Special+Elite&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #010409;
+            --accent-green: #10b981;
+            --accent-green-bright: #34d399;
+            --accent-glow: rgba(16, 185, 129, 0.6);
+            --text-dim: #cbd5e1;
+            --glass: rgba(5, 10, 20, 0.95);
+            --glass-border: rgba(16, 185, 129, 0.5);
+            --font-spy: 'Orbitron', sans-serif;
+            --font-telex: 'Special Elite', cursive;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: crosshair;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-dim);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- BACKGROUND LAYERS --- */
+        #three-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        #code-rain-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            background: #000;
+        }
+
+        .nebula-glow {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .grid-layer {
+            position: fixed;
+            inset: -200px;
+            background-image: linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(circle at 50% 50%, black, transparent 85%);
+            transform: perspective(1000px) rotateX(60deg);
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        /* --- START SCREEN --- */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .logo-container {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* FIX: Logo scaling and squishing */
+        .ollama-logo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px var(--accent-green));
+            z-index: 2;
+            animation: breathe 4s infinite ease-in-out;
+        }
+
+        .logo-glow-ring {
+            position: absolute;
+            inset: 0;
+            border: 3px solid var(--accent-green);
+            border-radius: 40px;
+            opacity: 0.4;
+            box-shadow: 0 0 50px var(--accent-glow);
+            animation: rotate-ring 12s linear infinite;
+        }
+
+        .hero-title {
+            font-family: var(--font-spy);
+            font-size: clamp(3rem, 10vw, 5rem);
+            color: #fff;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            font-weight: 900;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .hero-title span {
+            color: var(--accent-green);
+        }
+
+        /* FIX: Button animations */
+        .sync-btn {
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px solid var(--accent-green);
+            color: #fff;
+            padding: 22px 65px;
+            font-family: var(--font-spy);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            cursor: pointer;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+        }
+
+        .sync-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 30px var(--accent-glow);
+            letter-spacing: 10px;
+            transform: translateY(-2px);
+        }
+
+        .sync-btn:active {
+            transform: scale(0.95);
+            background: var(--accent-green);
+            color: var(--bg-deep);
+        }
+
+        .sync-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: 0.5s;
+        }
+
+        .sync-btn:hover::after {
+            left: 100%;
+        }
+
+        @keyframes rotate-ring {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                transform: scale(0.9);
+            }
+
+            50% {
+                transform: scale(1.0);
+            }
+        }
+
+        /* --- MAIN INTERFACE --- */
+        .app-shell {
+            width: 94vw;
+            max-width: 1400px;
+            height: 90vh;
+            background: var(--glass);
+            backdrop-filter: blur(40px);
+            border: 2px solid var(--glass-border);
+            border-radius: 20px;
+            display: flex;
+            overflow: hidden;
+            opacity: 0;
+            transform: scale(0.85);
+            z-index: 10;
+        }
+
+        .sidebar {
+            width: 320px;
+            border-right: 2px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        .sidebar-header {
+            padding: 35px 25px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .node-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-spy);
+            font-size: 0.7rem;
+            color: var(--accent-green-bright);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .pulse {
+            width: 12px;
+            height: 12px;
+            background: var(--accent-green-bright);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--accent-green);
+            animation: dot-pulse 2s infinite;
+        }
+
+        @keyframes dot-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .trace-box {
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.7);
+            margin: 20px;
+            padding: 20px;
+            font-family: 'JetBrains Mono';
+            font-size: 0.8rem;
+            color: var(--accent-green-bright);
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            line-height: 1.6;
+        }
+
+        .sidebar-footer {
+            padding: 25px;
+            text-align: center;
+            border-top: 1px solid var(--glass-border);
+            flex-shrink: 0;
+        }
+
+        #clock {
+            font-size: 2.2rem;
+            color: #fff;
+            font-weight: 700;
+            font-family: var(--font-spy);
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chat-header {
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--glass-border);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .chat-header h2 {
+            font-family: var(--font-spy);
+            font-size: 1rem;
+            color: var(--accent-green-bright);
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        #messages {
+            flex: 1;
+            padding: 40px;
+            overflow-y: scroll;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-green) transparent;
+        }
+
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #messages::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-green);
+            background-clip: content-box;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 20px 28px;
+            border-radius: 15px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-bottom-right-radius: 2px;
+            font-family: 'JetBrains Mono';
+        }
+
+        .msg-ai {
+            align-self: flex-start;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 2px;
+            font-family: var(--font-telex);
+        }
+
+        .input-container {
+            padding: 35px 45px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 2px solid var(--glass-border);
+        }
+
+        .input-box {
+            background: #000;
+            border: 2px solid var(--glass-border);
+            padding: 20px 30px;
+            display: flex;
+            gap: 20px;
+            border-radius: 12px;
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'JetBrains Mono';
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-family: var(--font-spy);
+            font-size: 0.8rem;
+        }
+
+        .send-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-green-bright);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:active {
+            transform: scale(0.9) rotate(10deg);
+        }
+
+        .loading-bar {
+            height: 5px;
+            width: 0%;
+            background: var(--accent-green-bright);
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: width 0.4s;
+            z-index: 50;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 80px;
+            right: 40px;
+            width: 340px;
+            background: rgba(1, 4, 9, 0.98);
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            padding: 25px;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .settings-panel h3 {
+            font-family: var(--font-spy);
+            color: var(--accent-green);
+            font-size: 0.8rem;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            font-family: var(--font-spy);
+            font-size: 0.65rem;
+            color: #fff;
+        }
+
+        .ip-field {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            padding: 10px 15px;
+            color: var(--accent-green-bright);
+            font-family: 'JetBrains Mono';
+            margin-top: 8px;
+            outline: none;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-dim);
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: rgba(16, 185, 129, 0.2);
+            border-color: var(--accent-green);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+            background-color: var(--accent-green-bright);
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+
+        .icon-btn:hover {
+            color: var(--accent-green-bright);
+            background: rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="scanlines"></div>
+    <div class="grid-layer"></div>
+    <div class="nebula-glow" id="nebula"></div>
+    <canvas id="code-rain-canvas"></canvas>
+    <canvas id="three-canvas"></canvas>
+
+    <div id="start-screen">
+        <div class="logo-container">
+            <div class="logo-glow-ring"></div>
+            <img src="https://ollama.com/public/ollama.png" alt="Ollama Logo" class="ollama-logo-img">
+        </div>
+        <h1 class="hero-title">INTEL<span>LINK</span></h1>
+        <button class="sync-btn" onclick="activate()">AUTH_PROTOCOL</button>
+    </div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="node-status">
+                    <div class="pulse"></div>
+                    TARGET: <span id="node-ip-display">192.168.1.8</span>
+                </div>
+            </header>
+            <div id="trace-log" class="trace-box">
+                [SYSTEM] Neural Link Protocol v5.2<br>
+                [INFO] Encryption: AES-256-GCM<br>
+                [INFO] Agent: OLLAMA_PRIMARY<br>
+                [INFO] Target: ESP32_LLM_GATEWAY<br>
+                [STATUS] Secure channel ready...
+            </div>
+            <footer class="sidebar-footer">
+                <div id="clock">00:00:00</div>
+            </footer>
+        </aside>
+
+        <main class="content">
+            <div id="loading" class="loading-bar"></div>
+            <header class="chat-header">
+                <h2>CLASSIFIED_TERMINAL</h2>
+                <button class="icon-btn" id="settings-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+                    </svg>
+                </button>
+            </header>
+
+            <div id="settings-panel" class="settings-panel">
+                <h3>SECURE_OPTIONS</h3>
+                <div class="setting-item"><span>DATA_STREAM</span><label class="toggle-switch"><input type="checkbox"
+                            checked id="toggle-rain"><span class="slider"></span></label></div>
+                <div class="setting-item"><span>HOLOGRAM_SYNC</span><label class="toggle-switch"><input type="checkbox"
+                            checked id="toggle-3d"><span class="slider"></span></label></div>
+                <div class="ip-input-group"
+                    style="margin-top:20px; border-top:1px solid var(--glass-border); padding-top:15px;">
+                    <span
+                        style="font-size: 0.6rem; color: var(--accent-green); letter-spacing: 2px;">TARGET_IP_ADDR:</span>
+                    <input type="text" id="manual-ip-input" class="ip-field" placeholder="192.168.1.8"
+                        value="192.168.1.8">
+                </div>
+            </div>
+
+            <div id="messages">
+                <div class="msg msg-ai">Secure link established via Arctic Terminal. ESP32 relay is active. Use scroll
+                    wheel to navigate intel logs.</div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" class="input-box">
+                    <input type="text" id="user-input" placeholder="ENTER COMMAND..." autocomplete="off">
+                    <button type="submit" class="send-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentIP = "192.168.1.8";
+        const getApiUrl = () => `http://${currentIP}/ask`;
+
+        function activate() {
+            gsap.to("#start-screen", { duration: 0.6, opacity: 0, scale: 1.2, autoAlpha: 0 });
+            gsap.to(".app-shell", { duration: 1, opacity: 1, scale: 1, ease: "power2.out" });
+        }
+
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+        let isSettingsOpen = false;
+
+        settingsBtn.addEventListener('click', () => {
+            isSettingsOpen = !isSettingsOpen;
+            gsap.to(settingsPanel, { duration: 0.3, autoAlpha: isSettingsOpen ? 1 : 0, y: isSettingsOpen ? 0 : -20 });
+        });
+
+        document.getElementById('manual-ip-input').addEventListener('input', (e) => {
+            currentIP = e.target.value.trim() || "192.168.1.8";
+            document.getElementById('node-ip-display').textContent = currentIP;
+        });
+
+        async function handleChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = ''; appendMsg(text, 'user');
+
+            const loader = document.getElementById('loading');
+            loader.style.width = '30%'; input.disabled = true;
+
+            try {
+                const res = await fetch(getApiUrl(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text }),
+                });
+                const data = await res.json();
+                appendMsg(data.response || data.reply || "[DATA_EMPTY]", 'ai');
+            } catch (err) {
+                appendMsg(`SIGNAL_LOSS: ${err.message}`, 'ai');
+            } finally {
+                loader.style.width = '0%'; input.disabled = false; input.focus();
+            }
+        }
+
+        function appendMsg(txt, type) {
+            const div = document.createElement('div');
+            div.className = `msg msg-${type}`; div.textContent = txt;
+            const container = document.getElementById('messages');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        setInterval(() => {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+        }, 1000);
+
+        const cCanvas = document.getElementById('code-rain-canvas');
+        const cCtx = cCanvas.getContext('2d');
+        let cDrops = [];
+        function initCodeRain() {
+            cCanvas.width = window.innerWidth; cCanvas.height = window.innerHeight;
+            cDrops = Array(Math.floor(cCanvas.width / 16)).fill(1).map(() => Math.random() * -100);
+        }
+        function drawCodeRain() {
+            cCtx.fillStyle = 'rgba(0, 0, 0, 0.08)'; cCtx.fillRect(0, 0, cCanvas.width, cCanvas.height);
+            cCtx.font = 'bold 16px "JetBrains Mono"';
+            cDrops.forEach((y, i) => {
+                const char = "01<>{}[]/\\|;:=+-*&%$#@!?λμπΩ"[Math.floor(Math.random() * 26)];
+                cCtx.fillStyle = 'rgba(16, 185, 129, 0.5)';
+                cCtx.fillText(char, i * 16, y * 16);
+                if (y * 16 > cCanvas.height && Math.random() > 0.975) cDrops[i] = 0;
+                cDrops[i]++;
+            });
+            requestAnimationFrame(drawCodeRain);
+        }
+
+        let scene, camera, renderer, coreGroup;
+        function initThree() {
+            scene = new THREE.Scene();
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 15;
+            coreGroup = new THREE.Group(); scene.add(coreGroup);
+            coreGroup.add(new THREE.Mesh(new THREE.IcosahedronGeometry(4, 2), new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.1 })));
+        }
+        function animateThree() { requestAnimationFrame(animateThree); coreGroup.rotation.y += 0.0015; renderer.render(scene, camera); }
+
+        window.onload = () => { initCodeRain(); drawCodeRain(); initThree(); animateThree(); };
+        document.getElementById('chat-form').addEventListener('submit', handleChat);
+    </script>
+</body>
+
+</html>
